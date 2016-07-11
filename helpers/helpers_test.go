@@ -1,7 +1,7 @@
 package helpers_test
 
 import (
-	_ "github.com/cloudfoundry-incubator/cf-test-helpers/helpers"
+	_ "github.com/pivotal-cf-experimental/cf-test-helpers/helpers"
 
 	. "github.com/onsi/ginkgo"
 )
