@@ -1,9 +1,9 @@
 package services_test
 
 import (
-	"github.com/pivotal-cf-experimental/cf-test-helpers/services"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf-experimental/cf-test-helpers/services"
 )
 
 var _ = Describe("ValidateConfig", func() {
@@ -11,6 +11,7 @@ var _ = Describe("ValidateConfig", func() {
 		It("returns no error", func() {
 			validConfig := services.Config{
 				AppsDomain:    "bosh-lite.com",
+				SystemDomain:  "bosh-lite.com",
 				ApiEndpoint:   "api.bosh-lite.com",
 				AdminUser:     "admin",
 				AdminPassword: "admin",
@@ -70,6 +71,19 @@ var _ = Describe("ValidateConfig", func() {
 			err := services.ValidateConfig(&invalidConfig)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(MatchRegexp(`Field 'space_name' cannot be set unless 'org_name' is also set`))
+		})
+
+		It("returns an error if SystemDomain not set", func() {
+			invalidConfig := services.Config{
+				AppsDomain:    "bosh-lite.com",
+				ApiEndpoint:   "api.bosh-lite.com",
+				AdminUser:     "admin",
+				AdminPassword: "admin",
+			}
+
+			err := services.ValidateConfig(&invalidConfig)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(MatchRegexp(`Field 'system_domain' must not be empty`))
 		})
 	})
 })
