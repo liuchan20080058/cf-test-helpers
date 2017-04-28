@@ -32,6 +32,7 @@ var _ = Describe("ConfiguredContext", func() {
 		FakeAsUserCalls         []cf.UserContext
 		FakeApiRequestCalls     []apiRequestInputs
 		FakeApiRequestCallbacks []func(method, endpoint string, response interface{}, data ...string)
+		createUserCall          []string
 	)
 
 	var NoOpCmd = func() *exec.Cmd {
@@ -109,12 +110,13 @@ var _ = Describe("ConfiguredContext", func() {
 		Context("without OrgName", func() {
 			BeforeEach(func() {
 				config = services.Config{
-					AppsDomain:        "fake-domain",
-					ApiEndpoint:       "fake-endpoint",
-					AdminUser:         "fake-admin-user",
-					AdminPassword:     "fake-admin-password",
-					SkipSSLValidation: true,
-					TimeoutScale:      1,
+					AppsDomain:               "fake-domain",
+					ApiEndpoint:              "fake-endpoint",
+					AdminUser:                "fake-admin-user",
+					AdminPassword:            "fake-admin-password",
+					SkipSSLValidation:        true,
+					TimeoutScale:             1,
+					ConfigurableTestPassword: "meow",
 				}
 				context = services.NewContext(config, prefix)
 			})
@@ -135,10 +137,13 @@ var _ = Describe("ConfiguredContext", func() {
 			It("creates a new user with a unique name", func() {
 				context.Setup()
 
-				createUserCall := FakeCfCalls[0]
+				createUserCall = FakeCfCalls[0]
 				Expect(createUserCall[0]).To(Equal("create-user"))
 				Expect(createUserCall[1]).To(MatchRegexp("fake-prefix-USER-\\d+-.*"))
-				Expect(createUserCall[2]).To(Equal("meow")) //why meow??
+			})
+
+			It("uses the configured password for the user", func() {
+				Expect(createUserCall[2]).To(Equal("meow"))
 			})
 
 			It("creates a new quota with a unique name", func() {
@@ -227,13 +232,14 @@ var _ = Describe("ConfiguredContext", func() {
 		Context("With OrgName", func() {
 			BeforeEach(func() {
 				config = services.Config{
-					AppsDomain:        "fake-domain",
-					ApiEndpoint:       "fake-endpoint",
-					AdminUser:         "fake-admin-user",
-					AdminPassword:     "fake-admin-password",
-					SkipSSLValidation: true,
-					TimeoutScale:      1,
-					OrgName:           "fake-existing-org",
+					AppsDomain:               "fake-domain",
+					ApiEndpoint:              "fake-endpoint",
+					AdminUser:                "fake-admin-user",
+					AdminPassword:            "fake-admin-password",
+					SkipSSLValidation:        true,
+					TimeoutScale:             1,
+					OrgName:                  "fake-existing-org",
+					ConfigurableTestPassword: "meow",
 				}
 				context = services.NewContext(config, prefix)
 			})
@@ -257,7 +263,10 @@ var _ = Describe("ConfiguredContext", func() {
 				createUserCall := FakeCfCalls[0]
 				Expect(createUserCall[0]).To(Equal("create-user"))
 				Expect(createUserCall[1]).To(MatchRegexp("fake-prefix-USER-\\d+-.*"))
-				Expect(createUserCall[2]).To(Equal("meow")) //why meow??
+			})
+
+			It("uses the configured password for the user", func() {
+				Expect(createUserCall[2]).To(Equal("meow"))
 			})
 
 			It("does not create a new quota", func() {
@@ -563,6 +572,33 @@ var _ = Describe("ConfiguredContext", func() {
 				context.Teardown()
 
 				Expect(receivedDeleteQuotaCall).To(BeFalse(), "should not delete quota definition")
+			})
+		})
+
+		Context("when a password is not explicitly configured", func() {
+			var (
+				firstTestRun  services.Context
+				secondTestRun services.Context
+			)
+
+			BeforeEach(func() {
+				config = services.Config{
+					AppsDomain:               "fake-domain",
+					ApiEndpoint:              "fake-endpoint",
+					AdminUser:                "fake-admin-user",
+					AdminPassword:            "fake-admin-password",
+					SkipSSLValidation:        true,
+					TimeoutScale:             1,
+					ConfigurableTestPassword: "",
+				}
+				firstTestRun = services.NewContext(config, prefix)
+				secondTestRun = services.NewContext(config, prefix)
+				firstTestRun.Setup()
+				secondTestRun.Setup()
+			})
+
+			It("dynamically generates random passwords for the test user", func() {
+				Expect(secondTestRun.RegularUserContext().Password).NotTo(Equal(firstTestRun.RegularUserContext().Password))
 			})
 		})
 	})

@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega/gexec"
 
 	"github.com/pivotal-cf-experimental/cf-test-helpers/cf"
+	"github.com/pivotal-cf-experimental/cf-test-helpers/services"
 )
 
 const RUNAWAY_QUOTA_MEM_LIMIT = "99999G"
@@ -43,17 +44,18 @@ type quotaDefinition struct {
 
 func NewContext(config Config) *ConfiguredContext {
 	node := ginkgoconfig.GinkgoConfig.ParallelNode
-	timeTag := time.Now().Format("2006_01_02-15h04m05.999s")
+	timeTag := services.CurrentTimeFormatted()
 
 	regUser := fmt.Sprintf("%s-USER-%d-%s", config.NamePrefix, node, timeTag)
-	regUserPass := "meow"
+	var regUserPass string
 
 	if config.UseExistingUser {
 		regUser = config.ExistingUser
 		regUserPass = config.ExistingUserPassword
-	}
-	if config.ConfigurableTestPassword != "" {
+	} else if config.ConfigurableTestPassword != "" {
 		regUserPass = config.ConfigurableTestPassword
+	} else {
+		regUserPass = services.RandomStringOfLength(20)
 	}
 
 	return &ConfiguredContext{
@@ -83,6 +85,10 @@ func NewPersistentAppContext(config Config) *ConfiguredContext {
 	baseContext.isPersistent = true
 
 	return baseContext
+}
+
+func (context ConfiguredContext) GetConfiguredPassword() string {
+	return context.regularUserPassword
 }
 
 func (context ConfiguredContext) ShortTimeout() time.Duration {
